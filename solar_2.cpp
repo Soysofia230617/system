@@ -21,8 +21,8 @@ const double m_PI = 3.14159265358979323846;
 
 const double MAIN_BELT_TOTAL_MASS = 2.39e20; // кг
 const double KUIPER_BELT_TOTAL_MASS = 1.0e22; // кг
-const double MAIN_BELT_AVG_MASS = 4.78e13; // кг, для мелких астероидов
-const double KUIPER_BELT_AVG_MASS = 5.0e16; // кг, для мелких объектов
+const double MAIN_BELT_AVG_MASS = 4.78e13; // кг,
+const double KUIPER_BELT_AVG_MASS = 5.0e16; // кг,
 const double MAIN_BELT_DENSITY = 2.5e3; // кг/м³
 const double KUIPER_BELT_DENSITY = 1.0e3; // кг/м³
 
@@ -60,6 +60,7 @@ private:
     const int POSITION_SAVE_INTERVAL = 2000;
     const int ENERGY_COMPUTE_INTERVAL = 50000;
     const int COLLISION_CHECK_INTERVAL = 5000;
+    const int PROGRESS_INTERVAL = 100000;
 
 public:
     SolarSystem(double time_step_days, double total_time_years) {
@@ -77,14 +78,13 @@ public:
 
     double estimateMass(double gm, double diameter, bool is_kuiper) {
         if (gm > 0) {
-            return gm / G; // Масса из GM
+            return gm / G;
         }
         if (diameter > 0) {
-            double radius = diameter * 1e3 / 2; // Диаметр в км -> радиус в м
+            double radius = diameter * 1e3 / 2;
             double density = is_kuiper ? KUIPER_BELT_DENSITY : MAIN_BELT_DENSITY;
             return (4.0 / 3.0) * M_PI * radius * radius * radius * density;
         }
-        // Средняя масса для объектов без GM и диаметра
         return is_kuiper ? KUIPER_BELT_AVG_MASS : MAIN_BELT_AVG_MASS;
     }
 
@@ -158,7 +158,7 @@ public:
         bodies.push_back(body);
         if (!is_random && !body.name.empty()) {
             std::cout << "Добавлено тело: " << name << ", масса = " << mass << " кг, эксцентриситет = " << e
-                      << ", наклонение = " << i_deg << " град\n";
+                      << ", наклон = " << i_deg << " град\n";
         }
     }
 
@@ -173,7 +173,7 @@ public:
                 continue;
             }
             std::string line;
-            std::getline(file, line); // Пропустить заголовок
+            std::getline(file, line);
             int loaded = 0, skipped = 0;
             while (std::getline(file, line)) {
                 try {
@@ -207,13 +207,12 @@ public:
 
                     // Преобразование epoch_mjd в epoch (JD)
                     double epoch = epoch_mjd + 2400000.5;
-                    // Средняя аномалия и диаметр отсутствуют
                     double ma = 0.0;
                     double diameter = 0.0;
                     // Обработка GM
                     double gm = (gm_str.empty() || gm_str == "null" || gm_str == "\"null\"") ? 0.0 : std::stod(gm_str);
 
-                    double mass = estimateMass(gm, diameter, false); // is_kuiper = false
+                    double mass = estimateMass(gm, diameter, false);
                     double expected_period = std::sqrt(a * a * a);
 
                     if (a <= 0 || e < 0 || e >= 1 || !std::isfinite(mass)) {
@@ -250,7 +249,7 @@ public:
                 continue;
             }
             std::string line;
-            std::getline(file, line); // Пропустить заголовок
+            std::getline(file, line);
             int loaded = 0, skipped = 0;
             while (std::getline(file, line)) {
                 try {
@@ -271,7 +270,6 @@ public:
                     if (!name.empty() && name.front() == '"' && name.back() == '"') {
                         name = name.substr(1, name.size() - 2);
                     }
-                    // Удаляем лишние пробелы из имени
                     name.erase(0, name.find_first_not_of(" \t"));
                     name.erase(name.find_last_not_of(" \t") + 1);
 
@@ -285,13 +283,12 @@ public:
 
                     // Преобразование epoch_mjd в epoch (JD)
                     double epoch = epoch_mjd + 2400000.5;
-                    // Средняя аномалия и диаметр отсутствуют
                     double ma = 0.0;
                     double diameter = 0.0;
                     // Обработка GM
                     double gm = (gm_str.empty() || gm_str == "null" || gm_str == "\"null\"") ? 0.0 : std::stod(gm_str);
 
-                    double mass = estimateMass(gm, diameter, true); // is_kuiper = true
+                    double mass = estimateMass(gm, diameter, true);
                     double expected_period = std::sqrt(a * a * a);
 
                     if (a <= 0 || e < 0 || e >= 1 || !std::isfinite(mass)) {
@@ -561,6 +558,13 @@ public:
                             << ", log10|ΔE/E₀| = " << log_delta_e << "\n";
             }
 
+            // Вывод прогресса
+            if (step % PROGRESS_INTERVAL == 0) {
+                double time_years = step * dt / YEAR;
+                std::cout << "Прогресс: шаг " << step << " из " << steps << ", время = " << std::fixed << std::setprecision(2)
+                          << time_years << " лет\n";
+            }
+
             bool all_short_periods_computed = true;
             for (size_t i = 1; i < bodies.size(); ++i) {
                 if (bodies[i].expected_period <= 5.0 && !bodies[i].period_computed && bodies[i].is_active) {
@@ -613,9 +617,8 @@ public:
 };
 
 int main() {
-    SolarSystem system(0.01, 270.0);
+    SolarSystem system(0.01, 15.0);// шаг интегрирования, время моделирования в годах
 
-    // Добавление основных тел
     system.addBody("Sun", M_SUN, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     system.addBody("Mercury", 3.30e23, 0.387, 0.2056, 7.00, 29.12, 48.33, 0.0, 0.24);
     system.addBody("Venus", 4.87e24, 0.723, 0.0068, 3.39, 54.88, 76.68, 0.0, 0.62);
@@ -636,23 +639,18 @@ int main() {
     system.addBody("Haumea", 4.01e21, 43.1, 0.1913, 28.19, 121.79, 239.08, 0.0, 283.00);
     system.addBody("Makemake", 3.1e21, 45.8, 0.1610, 29.01, 79.36, 297.24, 0.0, 309.00);
 
-    // Загрузка астероидов из нескольких файлов
     std::vector<std::string> main_belt_files = {
-            "main_belt_1.csv"
+            "main_belt_test.csv"
     };
     std::vector<std::string> kuiper_belt_files = {
-            "kuiper_belt_1.csv",
-            "kuiper_belt_2.csv",
-            "kuiper_belt_3.csv",
-            "kuiper_belt_4.csv",
-            "kuiper_belt_5.csv"
+            "kuiper_belt_test.csv"
     };
 
     system.loadMainBelt(main_belt_files);
-    //system.loadKuiperBelt(kuiper_belt_files);
+    system.loadKuiperBelt(kuiper_belt_files);
 
     system.simulate();
-    system.printResults(270.0);
+    system.printResults(15.0); //результаты за количество лет
 
     return 0;
 }
